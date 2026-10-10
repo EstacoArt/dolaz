@@ -78,6 +78,27 @@
 
   </main>
 
+  <!-- Dispute Modal Popup -->
+  <div id="dispute-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-lg max-w-lg w-full p-6 mx-4">
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">Raise Dispute</h3>
+      <p class="text-sm text-gray-500 mb-4">Please provide a detailed explanation of the issue so our specialists can review it.</p>
+      <textarea id="dispute-reason-input" rows="4"
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none mb-4 text-sm"
+                placeholder="Describe the issue or reason for dispute..."></textarea>
+      <div class="flex justify-end gap-3">
+        <button type="button" onclick="closeDisputeModal()"
+                class="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 font-medium">
+          Cancel
+        </button>
+        <button type="button" onclick="submitDispute()"
+                class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 font-medium">
+          Submit Dispute
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
@@ -94,6 +115,7 @@
 
     let currentUser = null;
     let userProfile = null;
+    let activeDisputeJobId = null;
     const expandedJobIds = new Set();
 
     // ========== AUTH GUARD ==========
@@ -531,19 +553,42 @@
       loadJobs();
     };
 
-    window.raiseDispute = async (jobId) => {
-      const reason = prompt('Please briefly describe the issue:');
-      if (!reason) return;
+    window.raiseDispute = (jobId) => {
+      activeDisputeJobId = jobId;
+      document.getElementById('dispute-reason-input').value = '';
+      document.getElementById('dispute-modal').classList.remove('hidden');
+    };
 
-      await db.collection('jobs').doc(jobId).update({
-        status: 'disputed',
-        disputeReason: reason,
-        disputedBy: currentUser.uid,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction(jobId, 'DISPUTE_RAISED', `Dispute reason: ${reason}`);
-      loadJobs();
-      alert('Dispute raised. Our specialists will review it within a few days.');
+    window.closeDisputeModal = () => {
+      activeDisputeJobId = null;
+      document.getElementById('dispute-modal').classList.add('hidden');
+    };
+
+    window.submitDispute = async () => {
+      const reason = document.getElementById('dispute-reason-input').value.trim();
+      if (!reason) {
+        alert('Please enter a description for the dispute.');
+        return;
+      }
+
+      if (!activeDisputeJobId) return;
+
+      const jobId = activeDisputeJobId;
+      closeDisputeModal();
+
+      try {
+        await db.collection('jobs').doc(jobId).update({
+          status: 'disputed',
+          disputeReason: reason,
+          disputedBy: currentUser.uid,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await logAuditAction(jobId, 'DISPUTE_RAISED', `Dispute reason: ${reason}`);
+        loadJobs();
+        alert('Dispute raised. Our specialists will review it within a few days.');
+      } catch (err) {
+        alert('Error raising dispute: ' + err.message);
+      }
     };
   </script>
 </body>
