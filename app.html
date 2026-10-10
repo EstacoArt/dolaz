@@ -152,57 +152,85 @@
     // ========== LOAD JOBS ==========
     async function loadJobs() {
       const jobsList = document.getElementById('jobs-list');
-      jobsList.innerHTML = '<p class="text-gray-500">Loading...</p>';
-
-      let query;
-      if (userProfile.role === 'client') {
-        query = db.collection('jobs').where('clientId', '==', currentUser.uid);
-      } else {
-        // Contractors see jobs they are assigned to + open proposed jobs
-        query = db.collection('jobs').where('status', 'in', ['proposed', 'accepted', 'funded', 'completed', 'disputed']);
-      }
-
-      const snapshot = await query.orderBy('createdAt', 'desc').get();
-
-      if (snapshot.empty) {
-        jobsList.innerHTML = '<p class="text-gray-500">No jobs yet.</p>';
-        return;
-      }
-
-      jobsList.innerHTML = '';
-      snapshot.forEach(doc => {
-        const job = doc.data();
-        const jobId = doc.id;
-
-        // Simple filter for contractors (in v1 we show proposed + their own)
-        if (userProfile.role === 'contractor' && job.contractorId && job.contractorId !== currentUser.uid) {
+      jobsList.innerHTML = '<p class="text-gray-500">Loading jobs...</p>';
+    
+      try {
+        let snapshot;
+    
+        if (userProfile.role === 'client') {
+          // Clients only see their own jobs
+          snapshot = await db.collection('jobs')
+            .where('clientId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+        } else {
+          // Contractors: show open proposed jobs + jobs assigned to them
+          // We do two simple queries and merge them
+          const openJobs = await db.collection('jobs')
+            .where('status', '==', 'proposed')
+            .orderBy('createdAt', 'desc')
+            .get();
+    
+          const myJobs = await db.collection('jobs')
+            .where('contractorId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+    
+          // Merge and remove duplicates
+          const jobsMap = new Map();
+          openJobs.forEach(doc => jobsMap.set(doc.id, doc));
+          myJobs.forEach(doc => jobsMap.set(doc.id, doc));
+          snapshot = { docs: Array.from(jobsMap.values()), empty: jobsMap.size === 0 };
+        }
+    
+        if (snapshot.empty) {
+          jobsList.innerHTML = '<p class="text-gray-500">No jobs yet.</p>';
           return;
         }
-
-        const card = document.createElement('div');
-        card.className = 'bg-white rounded-xl shadow-sm border p-5';
-
-        card.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div>
-              <h3 class="font-medium text-gray-900">${job.description.substring(0, 80)}${job.description.length > 80 ? '...' : ''}</h3>
-              <p class="text-sm text-gray-500 mt-1">
-                ${job.amount} ${job.currency} · 
-                <span class="capitalize font-medium">${job.status}</span>
-              </p>
+    
+        jobsList.innerHTML = '';
+    
+        snapshot.docs.forEach(doc => {
+          const job = doc.data();
+          const jobId = doc.id;
+    
+          const card = document.createElement('div');
+          card.className = 'bg-white rounded-xl shadow-sm border p-5';
+    
+          card.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <h3 class="font-medium text-gray-900">${job.description.substring(0, 80)}${job.description.length > 80 ? '...' : ''}</h3>
+                <p class="text-sm text-gray-500 mt-1">
+                  ${job.amount} ${job.currency} · 
+                  <span class="capitalize font-medium">${job.status}</span>
+                </p>
+                ${job.clientName ? `<p class="text-xs text-gray-400 mt-1">Client: ${job.clientName}</p>` : ''}
+                ${job.contractorName ? `<p class="text-xs text-gray-400">Contractor: ${job.contractorName}</p>` : ''}
+              </div>
+              <div class="text-right text-sm text-gray-400">
+                ${job.createdAt?.toDate().toLocaleDateString() || ''}
+              </div>
             </div>
-            <div class="text-right text-sm text-gray-400">
-              ${job.createdAt?.toDate().toLocaleDateString() || ''}
+    
+            <div class="mt-4 flex gap-2 flex-wrap">
+              ${renderActionButtons(job, jobId)}
             </div>
-          </div>
-
-          <div class="mt-4 flex gap-2">
-            ${renderActionButtons(job, jobId)}
+          `;
+    
+          jobsList.appendChild(card);
+        });
+    
+      } catch (err) {
+        console.error('Error loading jobs:', err);
+        jobsList.innerHTML = `
+          <div class="bg-red-50 text-red-700 p-4 rounded-lg">
+            <p class="font-medium">Error loading jobs</p>
+            <p class="text-sm mt-1">${err.message}</p>
+            <p class="text-sm mt-2">Check the browser console and Firestore indexes / security rules.</p>
           </div>
         `;
-
-        jobsList.appendChild(card);
-      });
+      }
     }
 
     function renderActionButtons(job, jobId) {
