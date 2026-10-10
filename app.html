@@ -340,6 +340,7 @@
       if (job.status === 'void_requested') {
         if (job.voidRequestedBy === currentUser.uid) {
           return `
+            <button onclick="cancelVoidRequest('${jobId}')" class="px-4 py-1.5 bg-gray-300 text-gray-800 text-sm rounded-lg hover:bg-gray-400 font-medium">Un-Void Request</button>
             <span class="text-sm text-amber-600 font-medium">Void requested. Waiting for other party approval.</span>
             <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
           `;
@@ -427,12 +428,33 @@
 
     window.requestVoid = async (jobId) => {
       if (!confirm('Are you sure you want to request to void this contract?')) return;
+      
+      // Check prior status or determine target restoration state based on amount / funding status if needed, 
+      // but simpler: we can inspect the current doc before updating, or check if it's funded.
+      const docSnap = await db.collection('jobs').doc(jobId).get();
+      const currentStatus = docSnap.data().status;
+
       await db.collection('jobs').doc(jobId).update({
         status: 'void_requested',
         voidRequestedBy: currentUser.uid,
+        priorStatus: currentStatus, // Store prior status to allow un-voiding correctly
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       await logAuditAction(jobId, 'VOID_REQUESTED', 'Void requested');
+      loadJobs();
+    };
+
+    window.cancelVoidRequest = async (jobId) => {
+      const docSnap = await db.collection('jobs').doc(jobId).get();
+      const priorStatus = docSnap.data().priorStatus || 'funded'; // Fallback safely
+
+      await db.collection('jobs').doc(jobId).update({
+        status: priorStatus,
+        voidRequestedBy: firebase.firestore.FieldValue.delete(),
+        priorStatus: firebase.firestore.FieldValue.delete(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction(jobId, 'VOID_CANCELLED', 'Void request cancelled (Un-voided)');
       loadJobs();
     };
 
