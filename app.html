@@ -278,12 +278,19 @@
       const isParticipant = (job.clientId === currentUser.uid || job.contractorId === currentUser.uid);
       if (!isParticipant) return `<span class="text-sm text-gray-400">No actions available</span>`;
 
+      // If disputed, contract is locked
+      if (job.status === 'disputed') {
+        return `<span class="text-sm text-amber-600 font-medium">Dispute under review (Locked)</span>`;
+      }
+
       // Proposed status
       if (job.status === 'proposed') {
+        let buttons = '';
         if (role === 'contractor' && job.contractorId === currentUser.uid) {
-          return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
+          buttons += `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
         }
-        return `<span class="text-sm text-gray-400">Waiting for contractor to accept</span>`;
+        buttons += `<button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>`;
+        return buttons;
       }
 
       // Live / Active statuses (Accepted or Funded)
@@ -328,10 +335,6 @@
             <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
           `;
         }
-      }
-
-      if (job.status === 'disputed') {
-        return `<span class="text-sm text-amber-600 font-medium">Dispute under review</span>`;
       }
 
       if (['completed', 'released'].includes(job.status)) {
@@ -381,6 +384,16 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       await logAuditAction(jobId, 'FUNDS_RELEASED', 'Completion approved and funds released');
+      loadJobs();
+    };
+
+    window.voidJob = async (jobId) => {
+      if (!confirm('Are you sure you want to void this contract?')) return;
+      await db.collection('jobs').doc(jobId).update({
+        status: 'voided',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction(jobId, 'CONTRACT_VOIDED', 'Contract voided directly');
       loadJobs();
     };
 
