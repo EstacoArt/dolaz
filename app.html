@@ -108,6 +108,17 @@
     </div>
   </div>
 
+  <!-- Loading / Blocking Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full mx-4 text-center space-y-4">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto"></div>
+      <p class="text-sm font-medium text-gray-900 leading-relaxed">
+        We're submitting your request, please hang on for a few seconds. 
+        <span class="text-red-600 font-bold block mt-1">Do NOT close the window</span>
+      </p>
+    </div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
@@ -126,7 +137,16 @@
     let currentUser = null;
     let userProfile = null;
     let activeDisputeJobId = null;
+    let isSubmitting = false;
     const expandedJobIds = new Set();
+
+    // Prevent accidental window closure during submission
+    window.addEventListener('beforeunload', (e) => {
+      if (isSubmitting) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     // ========== AUTH GUARD ==========
     auth.onAuthStateChanged(async (user) => {
@@ -621,11 +641,17 @@
       const jobId = activeDisputeJobId;
       closeDisputeModal();
 
+      isSubmitting = true;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      const uploadedRefs = [];
+      const attachmentUrls = [];
+
       try {
-        const attachmentUrls = [];
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const storageRef = storage.ref(`disputes/${jobId}/${Date.now()}_${file.name}`);
+          uploadedRefs.push(storageRef);
           const snapshot = await storageRef.put(file);
           const downloadUrl = await snapshot.ref.getDownloadURL();
           attachmentUrls.push({
@@ -651,7 +677,19 @@
         loadJobs();
         alert('Dispute raised with attachments. Our specialists will review it within a few days.');
       } catch (err) {
-        alert('Error raising dispute: ' + err.message);
+        // Rollback: delete any uploaded files from storage if transaction fails or is interrupted
+        console.error('Error raising dispute, rolling back uploaded files...', err);
+        for (const ref of uploadedRefs) {
+          try {
+            await ref.delete();
+          } catch (delErr) {
+            console.error('Failed to clean up storage file during rollback:', delErr);
+          }
+        }
+        alert('Error raising dispute: ' + err.message + '\n\nTransaction aborted. Please try again.');
+      } finally {
+        isSubmitting = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
       }
     };
   </script>
