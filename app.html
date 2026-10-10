@@ -27,7 +27,7 @@
 
   <main class="max-w-5xl mx-auto px-4 py-8">
 
-    <!-- Create Job (only for clients) -->
+    <!-- Create Job (available for both clients and contractors) -->
     <section id="create-job-section" class="mb-10 hidden">
       <div class="bg-white rounded-xl shadow-sm border p-6">
         <h2 class="text-lg font-semibold mb-4">Create New Job</h2>
@@ -73,7 +73,7 @@
   </main>
 
   <script>
-    // ========== FIREBASE CONFIG (same as index.html) ==========
+    // ========== FIREBASE CONFIG ==========
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
       authDomain: "dolaz-9e25e.firebaseapp.com",
@@ -105,10 +105,8 @@
       document.getElementById('user-info').textContent =
         `${userProfile.name} (${userProfile.role})`;
 
-      // Show create job form only for clients
-      if (userProfile.role === 'client') {
-        document.getElementById('create-job-section').classList.remove('hidden');
-      }
+      // Show create job form for BOTH clients and contractors
+      document.getElementById('create-job-section').classList.remove('hidden');
 
       loadJobs();
     });
@@ -164,22 +162,27 @@
             .orderBy('createdAt', 'desc')
             .get();
         } else {
-          // Contractors: show open proposed jobs + jobs assigned to them
-          // We do two simple queries and merge them
+          // Contractors: show open proposed jobs + jobs assigned to them + jobs they posted
           const openJobs = await db.collection('jobs')
             .where('status', '==', 'proposed')
             .orderBy('createdAt', 'desc')
             .get();
     
-          const myJobs = await db.collection('jobs')
+          const myAssignedJobs = await db.collection('jobs')
             .where('contractorId', '==', currentUser.uid)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+          const myPostedJobs = await db.collection('jobs')
+            .where('clientId', '==', currentUser.uid)
             .orderBy('createdAt', 'desc')
             .get();
     
           // Merge and remove duplicates
           const jobsMap = new Map();
           openJobs.forEach(doc => jobsMap.set(doc.id, doc));
-          myJobs.forEach(doc => jobsMap.set(doc.id, doc));
+          myAssignedJobs.forEach(doc => jobsMap.set(doc.id, doc));
+          myPostedJobs.forEach(doc => jobsMap.set(doc.id, doc));
           snapshot = { docs: Array.from(jobsMap.values()), empty: jobsMap.size === 0 };
         }
     
@@ -236,19 +239,19 @@
     function renderActionButtons(job, jobId) {
       const role = userProfile.role;
 
-      if (job.status === 'proposed' && role === 'contractor' && !job.contractorId) {
+      if (job.status === 'proposed' && role === 'contractor' && !job.contractorId && job.clientId !== currentUser.uid) {
         return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Job</button>`;
       }
 
-      if (job.status === 'accepted' && role === 'client') {
+      if (job.status === 'accepted' && job.clientId === currentUser.uid) {
         return `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job (Bank Transfer)</button>`;
       }
 
-      if (job.status === 'funded' && role === 'contractor') {
+      if (job.status === 'funded' && job.contractorId === currentUser.uid) {
         return `<button onclick="markComplete('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>`;
       }
 
-      if (job.status === 'completed' && role === 'client') {
+      if (job.status === 'completed' && job.clientId === currentUser.uid) {
         return `
           <button onclick="approveComplete('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve & Release</button>
           <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
@@ -262,7 +265,7 @@
       return `<span class="text-sm text-gray-400">No actions available</span>`;
     }
 
-    // ========== ACTION HANDLERS (placeholders for now) ==========
+    // ========== ACTION HANDLERS ==========
     window.acceptJob = async (jobId) => {
       await db.collection('jobs').doc(jobId).update({
         contractorId: currentUser.uid,
@@ -274,7 +277,6 @@
     };
 
     window.fundJob = async (jobId) => {
-      // In real version this will show Monerium/Bridge deposit instructions
       alert('In the next step we will show the bank transfer details (IBAN / ACH).\n\nFor now the status will just move to "funded".');
       await db.collection('jobs').doc(jobId).update({
         status: 'funded',
