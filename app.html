@@ -393,7 +393,6 @@
         if (job.completionRequestedBy === currentUser.uid) {
           return `
             <span class="text-sm text-amber-600 font-medium">Completion requested. Waiting for other party approval.</span>
-            <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
           `;
         } else {
           return `
