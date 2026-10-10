@@ -143,26 +143,36 @@
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorEl.classList.add('hidden');
-
-      const name = document.getElementById('signup-name').value;
-      const email = document.getElementById('signup-email').value;
+    
+      const name = document.getElementById('signup-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
       const password = document.getElementById('signup-password').value;
       const role = document.getElementById('signup-role').value;
-
+    
+      if (!role) {
+        errorEl.textContent = 'Please select whether you are a Client or Contractor.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+    
       try {
+        // 1. Create Auth user
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-
-        // Create user profile in Firestore
+    
+        // 2. Create profile in Firestore
         await db.collection('users').doc(user.uid).set({
           name,
           email,
-          role,               // "client" or "contractor"
+          role,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-
+    
+        console.log('User profile created successfully for', user.uid);
         window.location.href = 'app.html';
+    
       } catch (err) {
+        console.error('Signup error:', err);
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
