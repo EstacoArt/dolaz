@@ -94,6 +94,7 @@
 
     let currentUser = null;
     let userProfile = null;
+    const expandedJobIds = new Set();
 
     // ========== AUTH GUARD ==========
     auth.onAuthStateChanged(async (user) => {
@@ -200,6 +201,57 @@
       }
     });
 
+    // ========== TOGGLE JOB EXPANSION & TIMELINE ==========
+    async function toggleJobExpansion(jobId, cardElement) {
+      const timelineDiv = cardElement.querySelector(`#timeline-${jobId}`);
+      const arrowSpan = cardElement.querySelector('.arrow-indicator');
+      if (!timelineDiv) return;
+
+      if (expandedJobIds.has(jobId)) {
+        expandedJobIds.delete(jobId);
+        timelineDiv.classList.add('hidden');
+        if (arrowSpan) arrowSpan.classList.remove('rotate-180');
+      } else {
+        expandedJobIds.add(jobId);
+        timelineDiv.classList.remove('hidden');
+        if (arrowSpan) arrowSpan.classList.add('rotate-180');
+        await loadTimelineLogs(jobId, timelineDiv);
+      }
+    }
+
+    async function loadTimelineLogs(jobId, container) {
+      container.innerHTML = '<p class="text-xs text-gray-400">Loading timeline...</p>';
+      try {
+        const logsSnapshot = await db.collection('jobs').doc(jobId).collection('auditLogs').orderBy('timestamp', 'asc').get();
+        if (logsSnapshot.empty) {
+          container.innerHTML = '<p class="text-xs text-gray-400">No activity recorded yet.</p>';
+          return;
+        }
+
+        let html = '<h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Audit Timeline</h4>';
+        html += '<div class="space-y-3 border-l-2 border-blue-100 pl-3 ml-1">';
+
+        logsSnapshot.forEach(doc => {
+          const log = doc.data();
+          const timeStr = log.timestamp?.toDate() ? log.timestamp.toDate().toLocaleString() : 'Just now';
+          html += `
+            <div class="relative">
+              <div class="absolute -left-[17px] top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white"></div>
+              <p class="text-xs font-medium text-gray-800">${log.action.replace(/_/g, ' ')} <span class="text-gray-400 font-normal">by ${log.userName || 'Unknown'} (${log.userRole || ''})</span></p>
+              ${log.details ? `<p class="text-xs text-gray-500 mt-0.5">${log.details}</p>` : ''}
+              <p class="text-[10px] text-gray-400 mt-0.5">${timeStr}</p>
+            </div>
+          `;
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+      } catch (err) {
+        console.error('Error loading timeline:', err);
+        container.innerHTML = '<p class="text-xs text-red-500">Failed to load timeline.</p>';
+      }
+    }
+
     // ========== LOAD JOBS ==========
     async function loadJobs() {
       const jobsList = document.getElementById('jobs-list');
@@ -236,9 +288,15 @@
         docs.forEach(doc => {
           const job = doc.data();
           const jobId = doc.id;
+          const isExpanded = expandedJobIds.has(jobId);
     
           const card = document.createElement('div');
-          card.className = 'bg-white rounded-xl shadow-sm border p-5';
+          card.className = 'bg-white rounded-xl shadow-sm border p-5 cursor-pointer hover:border-gray-300 transition';
+          
+          card.onclick = (e) => {
+            if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('textarea')) return;
+            toggleJobExpansion(jobId, card);
+          };
     
           card.innerHTML = `
             <div class="flex justify-between items-start">
@@ -250,17 +308,26 @@
                 </p>
                 <p class="text-xs text-gray-400 mt-1">Client: ${job.clientName} · Contractor: ${job.contractorName || 'Pending Assignment'}</p>
               </div>
-              <div class="text-right text-sm text-gray-400">
-                ${job.createdAt?.toDate().toLocaleDateString() || ''}
+              <div class="text-right text-sm text-gray-400 flex items-center gap-2">
+                <span>${job.createdAt?.toDate().toLocaleDateString() || ''}</span>
+                <span class="arrow-indicator text-xs text-gray-400 transform transition-transform ${isExpanded ? 'rotate-180' : ''}">▼</span>
               </div>
             </div>
     
             <div class="mt-4 flex gap-2 flex-wrap">
               ${renderActionButtons(job, jobId)}
             </div>
+
+            <div id="timeline-${jobId}" class="mt-4 pt-4 border-t border-gray-100 ${isExpanded ? '' : 'hidden'}">
+              ${isExpanded ? '<p class="text-xs text-gray-400">Loading timeline...</p>' : ''}
+            </div>
           `;
     
           jobsList.appendChild(card);
+
+          if (isExpanded) {
+            loadTimelineLogs(jobId, card.querySelector(`#timeline-${jobId}`));
+          }
         });
     
       } catch (err) {
@@ -428,16 +495,13 @@
 
     window.requestVoid = async (jobId) => {
       if (!confirm('Are you sure you want to request to void this contract?')) return;
-      
-      // Check prior status or determine target restoration state based on amount / funding status if needed, 
-      // but simpler: we can inspect the current doc before updating, or check if it's funded.
       const docSnap = await db.collection('jobs').doc(jobId).get();
       const currentStatus = docSnap.data().status;
 
       await db.collection('jobs').doc(jobId).update({
         status: 'void_requested',
         voidRequestedBy: currentUser.uid,
-        priorStatus: currentStatus, // Store prior status to allow un-voiding correctly
+        priorStatus: currentStatus,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       await logAuditAction(jobId, 'VOID_REQUESTED', 'Void requested');
@@ -446,7 +510,7 @@
 
     window.cancelVoidRequest = async (jobId) => {
       const docSnap = await db.collection('jobs').doc(jobId).get();
-      const priorStatus = docSnap.data().priorStatus || 'funded'; // Fallback safely
+      const priorStatus = docSnap.data().priorStatus || 'funded';
 
       await db.collection('jobs').doc(jobId).update({
         status: priorStatus,
