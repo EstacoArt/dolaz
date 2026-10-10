@@ -135,7 +135,6 @@
       }
 
       try {
-        // Look up recipient by their unique 5-char code
         const userQuery = await db.collection('users').where('code', '==', recipientCode).get();
         
         if (userQuery.empty) {
@@ -147,7 +146,6 @@
         const recipientId = recipientDoc.id;
         const recipientData = recipientDoc.data();
 
-        // Assign client and contractor IDs based on roles
         let clientId, clientName, contractorId, contractorName;
 
         if (userProfile.role === 'client') {
@@ -170,7 +168,7 @@
           description,
           amount,
           currency,
-          status: 'proposed', // proposed → accepted → funded → completed → released / disputed
+          status: 'proposed',
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -183,30 +181,26 @@
       }
     });
 
-    // ========== LOAD JOBS (Targeted Queries) ==========
+    // ========== LOAD JOBS ==========
     async function loadJobs() {
       const jobsList = document.getElementById('jobs-list');
       jobsList.innerHTML = '<p class="text-gray-500">Loading jobs...</p>';
     
       try {
-        // Query jobs where the user is the client
         const clientJobs = await db.collection('jobs')
           .where('clientId', '==', currentUser.uid)
           .get();
 
-        // Query jobs where the user is the contractor
         const contractorJobs = await db.collection('jobs')
           .where('contractorId', '==', currentUser.uid)
           .get();
     
-        // Merge and remove duplicates
         const jobsMap = new Map();
         clientJobs.forEach(doc => jobsMap.set(doc.id, doc));
         contractorJobs.forEach(doc => jobsMap.set(doc.id, doc));
         
         const docs = Array.from(jobsMap.values());
         
-        // Sort descending by createdAt manually if needed, or let query handle it
         docs.sort((a, b) => {
           const timeA = a.data().createdAt?.toMillis() || 0;
           const timeB = b.data().createdAt?.toMillis() || 0;
@@ -262,32 +256,59 @@
     }
 
     function renderActionButtons(job, jobId) {
-      const role = userProfile.role;
+      const isParticipant = (job.clientId === currentUser.uid || job.contractorId === currentUser.uid);
+      if (!isParticipant) return `<span class="text-sm text-gray-400">No actions available</span>`;
 
-      if (job.status === 'proposed' && role === 'contractor' && job.contractorId === currentUser.uid) {
-        return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
+      // Proposed status
+      if (job.status === 'proposed') {
+        if (userProfile.role === 'contractor' && job.contractorId === currentUser.uid) {
+          return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
+        }
+        if (job.clientId === currentUser.uid) {
+          return `<button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void Contract</button>`;
+        }
       }
 
-      if (job.status === 'accepted' && job.clientId === currentUser.uid) {
-        return `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job (Bank Transfer)</button>`;
-      }
-
-      if (job.status === 'funded' && job.contractorId === currentUser.uid) {
-        return `<button onclick="markComplete('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>`;
-      }
-
-      if (job.status === 'completed' && job.clientId === currentUser.uid) {
-        return `
-          <button onclick="approveComplete('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve & Release</button>
+      // Live / Active status (Accepted or Funded): Both buyer and contractor can Mark Complete, Raise Dispute, or Void
+      if (['accepted', 'funded'].includes(job.status)) {
+        let buttons = '';
+        if (job.status === 'accepted' && job.clientId === currentUser.uid) {
+          buttons += `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job</button>`;
+        }
+        buttons += `
+          <button onclick="markComplete('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>
           <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          <button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>
         `;
+        return buttons;
       }
 
-      if (['funded', 'completed'].includes(job.status)) {
-        return `<button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>`;
+      // Completed status
+      if (job.status === 'completed') {
+        let buttons = '';
+        if (job.clientId === currentUser.uid) {
+          buttons += `<button onclick="approveComplete('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve & Release</button>`;
+        }
+        buttons += `
+          <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          <button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>
+        `;
+        return buttons;
       }
 
-      return `<span class="text-sm text-gray-400">Waiting for other party</span>`;
+      if (job.status === 'disputed') {
+        return `<span class="text-sm text-amber-600 font-medium">Dispute under review</span>`;
+      }
+
+      if (job.status === 'released') {
+        return `<span class="text-sm text-green-600 font-medium">Funds Released Successfully</span>`;
+      }
+
+      if (job.status === 'voided') {
+        return `<span class="text-sm text-gray-400 font-medium">Contract Voided</span>`;
+      }
+
+      return `<span class="text-sm text-gray-400">No actions available</span>`;
     }
 
     // ========== ACTION HANDLERS ==========
@@ -336,6 +357,15 @@
       });
       loadJobs();
       alert('Dispute raised. Our specialists will review it within a few days.');
+    };
+
+    window.voidJob = async (jobId) => {
+      if (!confirm('Are you sure you want to void this contract?')) return;
+      await db.collection('jobs').doc(jobId).update({
+        status: 'voided',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      loadJobs();
     };
   </script>
 </body>
