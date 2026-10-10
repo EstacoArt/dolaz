@@ -81,7 +81,6 @@
   </div>
 
   <script>
-    // ========== FIREBASE CONFIG ==========
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
       authDomain: "dolaz-9e25e.firebaseapp.com",
@@ -95,9 +94,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    console.log("Firebase initialized successfully.");
 
-    // ========== TAB SWITCHING ==========
     const tabSignin = document.getElementById('tab-signin');
     const tabSignup = document.getElementById('tab-signup');
     const signinForm = document.getElementById('signin-form');
@@ -124,26 +121,31 @@
       errorEl.classList.add('hidden');
     });
 
-    // ========== SIGN IN ==========
     signinForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorEl.classList.add('hidden');
       const email = document.getElementById('signin-email').value;
       const password = document.getElementById('signin-password').value;
 
-      console.log("Attempting sign in for:", email);
       try {
         await auth.signInWithEmailAndPassword(email, password);
-        console.log("Sign in successful. Redirecting to app.html...");
         window.location.href = 'app.html';
       } catch (err) {
-        console.error("Sign in error:", err);
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
     });
 
-    // ========== SIGN UP (WITH DEBUG LOGS) ==========
+    // Helper to generate 5-char alphanumeric code (excluding ambiguous chars)
+    function generateUserCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let result = '';
+      for (let i = 0; i < 5; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorEl.classList.add('hidden');
@@ -153,42 +155,37 @@
       const password = document.getElementById('signup-password').value;
       const role = document.getElementById('signup-role').value;
     
-      console.log("1. Starting signup form submission...", { name, email, role });
-
       if (!role) {
-        console.warn("Validation failed: No role selected.");
         errorEl.textContent = 'Please select whether you are a Client or Contractor.';
         errorEl.classList.remove('hidden');
         return;
       }
     
       try {
-        // 1. Create Auth user
-        console.log("2. Calling createUserWithEmailAndPassword...");
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
-        console.log("3. Auth user created successfully. UID:", user.uid);
     
-        // 2. Create profile in Firestore
-        console.log("4. Attempting to write document to Firestore users collection...");
+        // Generate a guaranteed unique 5-char code
+        let code = '';
+        let exists = true;
+        while (exists) {
+          code = generateUserCode();
+          const check = await db.collection('users').where('code', '==', code).get();
+          if (check.empty) exists = false;
+        }
+    
         await db.collection('users').doc(user.uid).set({
           name,
           email,
           role,
+          code,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     
-        console.log("5. Firestore user profile document written successfully!");
-        console.log("6. Redirecting to app.html...");
         window.location.href = 'app.html';
     
       } catch (err) {
-        console.error("--- SIGNUP ERROR CAUGHT ---");
-        console.error("Error Code:", err.code);
-        console.error("Error Message:", err.message);
-        console.error("Full Error Object:", err);
-        
-        errorEl.textContent = `[${err.code || 'Error'}] ${err.message}`;
+        errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
     });
