@@ -82,19 +82,20 @@
 
   <script>
     // ========== FIREBASE CONFIG ==========
-    // Replace with your own Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
       authDomain: "dolaz-9e25e.firebaseapp.com",
       projectId: "dolaz-9e25e",
       storageBucket: "dolaz-9e25e.firebasestorage.app",
       messagingSenderId: "213063237801",
-      appId: "1:213063237801:web:10134ff68f17229362a9b8"
+      appId: "1:213063237801:web:10134ff68f17229362a9b8",
+      measurementId: "G-7L1PVN74KP"
     };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    console.log("Firebase initialized successfully.");
 
     // ========== TAB SWITCHING ==========
     const tabSignin = document.getElementById('tab-signin');
@@ -130,16 +131,19 @@
       const email = document.getElementById('signin-email').value;
       const password = document.getElementById('signin-password').value;
 
+      console.log("Attempting sign in for:", email);
       try {
         await auth.signInWithEmailAndPassword(email, password);
+        console.log("Sign in successful. Redirecting to app.html...");
         window.location.href = 'app.html';
       } catch (err) {
+        console.error("Sign in error:", err);
         errorEl.textContent = err.message;
         errorEl.classList.remove('hidden');
       }
     });
 
-    // ========== SIGN UP ==========
+    // ========== SIGN UP (WITH DEBUG LOGS) ==========
     signupForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorEl.classList.add('hidden');
@@ -149,7 +153,10 @@
       const password = document.getElementById('signup-password').value;
       const role = document.getElementById('signup-role').value;
     
+      console.log("1. Starting signup form submission...", { name, email, role });
+
       if (!role) {
+        console.warn("Validation failed: No role selected.");
         errorEl.textContent = 'Please select whether you are a Client or Contractor.';
         errorEl.classList.remove('hidden');
         return;
@@ -157,10 +164,13 @@
     
       try {
         // 1. Create Auth user
+        console.log("2. Calling createUserWithEmailAndPassword...");
         const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
+        console.log("3. Auth user created successfully. UID:", user.uid);
     
         // 2. Create profile in Firestore
+        console.log("4. Attempting to write document to Firestore users collection...");
         await db.collection('users').doc(user.uid).set({
           name,
           email,
@@ -168,12 +178,17 @@
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
     
-        console.log('User profile created successfully for', user.uid);
+        console.log("5. Firestore user profile document written successfully!");
+        console.log("6. Redirecting to app.html...");
         window.location.href = 'app.html';
     
       } catch (err) {
-        console.error('Signup error:', err);
-        errorEl.textContent = err.message;
+        console.error("--- SIGNUP ERROR CAUGHT ---");
+        console.error("Error Code:", err.code);
+        console.error("Error Message:", err.message);
+        console.error("Full Error Object:", err);
+        
+        errorEl.textContent = `[${err.code || 'Error'}] ${err.message}`;
         errorEl.classList.remove('hidden');
       }
     });
