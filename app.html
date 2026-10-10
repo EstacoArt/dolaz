@@ -185,6 +185,7 @@
           amount,
           currency,
           status: 'proposed',
+          createdBy: currentUser.uid,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -286,11 +287,15 @@
       // Proposed status
       if (job.status === 'proposed') {
         let buttons = '';
-        if (role === 'contractor' && job.contractorId === currentUser.uid) {
+        const isCreator = job.createdBy ? job.createdBy === currentUser.uid : true;
+
+        if (isCreator) {
+          buttons += `<button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void Contract</button>`;
+        } else {
           buttons += `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
         }
-        buttons += `<button onclick="voidJob('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>`;
-        return buttons;
+
+        return buttons || `<span class="text-sm text-gray-400">Waiting for other party</span>`;
       }
 
       // Live / Active statuses (Accepted or Funded)
@@ -388,12 +393,12 @@
     };
 
     window.voidJob = async (jobId) => {
-      if (!confirm('Are you sure you want to void this contract?')) return;
+      if (!confirm('Are you sure you want to void this proposed contract?')) return;
       await db.collection('jobs').doc(jobId).update({
         status: 'voided',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      await logAuditAction(jobId, 'CONTRACT_VOIDED', 'Contract voided directly');
+      await logAuditAction(jobId, 'CONTRACT_VOIDED', 'Contract voided unilaterally by creator');
       loadJobs();
     };
 
