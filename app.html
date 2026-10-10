@@ -301,13 +301,19 @@
         return buttons || `<span class="text-sm text-gray-400">Waiting for other party</span>`;
       }
 
-      // Live / Active statuses (Accepted or Funded)
-      if (['accepted', 'funded'].includes(job.status)) {
+      // Accepted status (Live but NOT funded yet)
+      if (job.status === 'accepted') {
         let buttons = '';
-        if (job.status === 'accepted' && job.clientId === currentUser.uid) {
+        if (job.clientId === currentUser.uid) {
           buttons += `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job</button>`;
         }
-        buttons += `
+        buttons += `<button onclick="requestVoid('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>`;
+        return buttons;
+      }
+
+      // Funded status (Live and funded)
+      if (job.status === 'funded') {
+        let buttons = `
           <button onclick="requestCompletion('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>
           <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
           <button onclick="requestVoid('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>
