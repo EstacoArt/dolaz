@@ -189,7 +189,6 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Record creation in audit log sub-collection
         await logAuditAction(jobRef.id, 'CONTRACT_CREATED', `Contract created for ${amount} ${currency}`);
 
         document.getElementById('create-job-form').reset();
@@ -246,7 +245,7 @@
                 <h3 class="font-medium text-gray-900">${job.description.substring(0, 80)}${job.description.length > 80 ? '...' : ''}</h3>
                 <p class="text-sm text-gray-500 mt-1">
                   ${job.amount} ${job.currency} · 
-                  <span class="capitalize font-medium">${job.status}</span>
+                  <span class="capitalize font-medium">${job.status.replace('_', ' ')}</span>
                 </p>
                 <p class="text-xs text-gray-400 mt-1">Client: ${job.clientName} · Contractor: ${job.contractorName || 'Pending Assignment'}</p>
               </div>
@@ -276,31 +275,74 @@
 
     function renderActionButtons(job, jobId) {
       const role = userProfile.role;
+      const isParticipant = (job.clientId === currentUser.uid || job.contractorId === currentUser.uid);
+      if (!isParticipant) return `<span class="text-sm text-gray-400">No actions available</span>`;
 
-      if (job.status === 'proposed' && role === 'contractor' && job.contractorId === currentUser.uid) {
-        return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
+      // Proposed status
+      if (job.status === 'proposed') {
+        if (role === 'contractor' && job.contractorId === currentUser.uid) {
+          return `<button onclick="acceptJob('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Accept Contract</button>`;
+        }
+        return `<span class="text-sm text-gray-400">Waiting for contractor to accept</span>`;
       }
 
-      if (job.status === 'accepted' && job.clientId === currentUser.uid) {
-        return `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job (Bank Transfer)</button>`;
-      }
-
-      if (job.status === 'funded' && job.contractorId === currentUser.uid) {
-        return `<button onclick="markComplete('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>`;
-      }
-
-      if (job.status === 'completed' && job.clientId === currentUser.uid) {
-        return `
-          <button onclick="approveComplete('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve & Release</button>
+      // Live / Active statuses (Accepted or Funded)
+      if (['accepted', 'funded'].includes(job.status)) {
+        let buttons = '';
+        if (job.status === 'accepted' && job.clientId === currentUser.uid) {
+          buttons += `<button onclick="fundJob('${jobId}')" class="px-4 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Fund Job</button>`;
+        }
+        buttons += `
+          <button onclick="requestCompletion('${jobId}')" class="px-4 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700">Mark as Complete</button>
           <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          <button onclick="requestVoid('${jobId}')" class="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">Void</button>
         `;
+        return buttons;
       }
 
-      if (['funded', 'completed'].includes(job.status)) {
-        return `<button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>`;
+      // Completion Requested (Waiting for other party validation)
+      if (job.status === 'completion_requested') {
+        if (job.completionRequestedBy === currentUser.uid) {
+          return `
+            <span class="text-sm text-amber-600 font-medium">Completion requested. Waiting for other party approval.</span>
+            <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          `;
+        } else {
+          return `
+            <button onclick="approveComplete('${jobId}')" class="px-4 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">Approve Completion</button>
+            <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          `;
+        }
       }
 
-      return `<span class="text-sm text-gray-400">Waiting for other party</span>`;
+      // Void Requested (Waiting for other party validation)
+      if (job.status === 'void_requested') {
+        if (job.voidRequestedBy === currentUser.uid) {
+          return `
+            <span class="text-sm text-amber-600 font-medium">Void requested. Waiting for other party approval.</span>
+            <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          `;
+        } else {
+          return `
+            <button onclick="approveVoid('${jobId}')" class="px-4 py-1.5 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700">Approve Void</button>
+            <button onclick="raiseDispute('${jobId}')" class="px-4 py-1.5 bg-red-100 text-red-700 text-sm rounded-lg hover:bg-red-200">Raise Dispute</button>
+          `;
+        }
+      }
+
+      if (job.status === 'disputed') {
+        return `<span class="text-sm text-amber-600 font-medium">Dispute under review</span>`;
+      }
+
+      if (['completed', 'released'].includes(job.status)) {
+        return `<span class="text-sm text-green-600 font-medium">Funds Released Successfully</span>`;
+      }
+
+      if (job.status === 'voided') {
+        return `<span class="text-sm text-gray-400 font-medium">Contract Voided</span>`;
+      }
+
+      return `<span class="text-sm text-gray-400">No actions available</span>`;
     }
 
     // ========== ACTION HANDLERS WITH AUDIT LOGGING ==========
@@ -323,12 +365,13 @@
       loadJobs();
     };
 
-    window.markComplete = async (jobId) => {
+    window.requestCompletion = async (jobId) => {
       await db.collection('jobs').doc(jobId).update({
-        status: 'completed',
+        status: 'completion_requested',
+        completionRequestedBy: currentUser.uid,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      await logAuditAction(jobId, 'MARKED_COMPLETE', 'Job marked complete by contractor');
+      await logAuditAction(jobId, 'COMPLETION_REQUESTED', 'Completion requested');
       loadJobs();
     };
 
@@ -337,7 +380,28 @@
         status: 'released',
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      await logAuditAction(jobId, 'FUNDS_RELEASED', 'Completion approved and funds released by client');
+      await logAuditAction(jobId, 'FUNDS_RELEASED', 'Completion approved and funds released');
+      loadJobs();
+    };
+
+    window.requestVoid = async (jobId) => {
+      if (!confirm('Are you sure you want to request to void this contract?')) return;
+      await db.collection('jobs').doc(jobId).update({
+        status: 'void_requested',
+        voidRequestedBy: currentUser.uid,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction(jobId, 'VOID_REQUESTED', 'Void requested');
+      loadJobs();
+    };
+
+    window.approveVoid = async (jobId) => {
+      if (!confirm('Are you sure you want to approve voiding this contract?')) return;
+      await db.collection('jobs').doc(jobId).update({
+        status: 'voided',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction(jobId, 'VOID_APPROVED', 'Void approved and contract terminated');
       loadJobs();
     };
 
