@@ -190,7 +190,7 @@
     // ========== WORKER CONNECTION TEST ==========
     document.getElementById('test-worker-btn').addEventListener('click', async () => {
       const statusMsg = document.getElementById('worker-status-msg');
-      statusMsg.textContent = 'Deploying new contract on Base Sepolia...';
+      statusMsg.textContent = 'Querying master registry on Base Sepolia...';
       statusMsg.className = 'text-sm text-blue-600 font-medium mt-1';
     
       try {
@@ -204,10 +204,10 @@
         const data = await response.json();
         
         if (response.ok && data.contractAddress) {
-          statusMsg.innerHTML = `Contract deployed! <a href="https://sepolia.basescan.org/address/${data.contractAddress}" target="_blank" class="underline font-mono">${data.contractAddress.substring(0, 10)}...</a>`;
+          statusMsg.innerHTML = `Connected! Owner: <span class="font-mono text-xs">${data.contractOwner.substring(0, 8)}...</span> · <a href="https://sepolia.basescan.org/address/${data.contractAddress}" target="_blank" class="underline font-mono">View Master Contract</a>`;
           statusMsg.className = 'text-sm text-green-600 font-medium mt-1';
         } else {
-          statusMsg.textContent = data.message || 'Deployment error.';
+          statusMsg.textContent = data.message || 'Connection error.';
           statusMsg.className = 'text-sm text-red-600 font-medium mt-1';
         }
       } catch (err) {
