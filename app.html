@@ -190,32 +190,25 @@
     // ========== WORKER CONNECTION TEST ==========
     document.getElementById('test-worker-btn').addEventListener('click', async () => {
       const statusMsg = document.getElementById('worker-status-msg');
-      statusMsg.textContent = 'Connecting to worker...';
+      statusMsg.textContent = 'Deploying new contract on Base Sepolia...';
       statusMsg.className = 'text-sm text-blue-600 font-medium mt-1';
-
+    
       try {
-        // Replace with your actual Cloudflare Worker URL (e.g. https://your-worker.your-subdomain.workers.dev)
-        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
-
+        const workerUrl = 'https://YOUR_WORKER_SUBDOMAIN.workers.dev';
+    
         const response = await fetch(workerUrl, {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+    
         const data = await response.json();
         
-        if (data.message === 'Worker successfully connected') {
-          statusMsg.textContent = 'Worker successfully connected';
+        if (response.ok && data.contractAddress) {
+          statusMsg.innerHTML = `Contract deployed! <a href="https://sepolia.basescan.org/address/${data.contractAddress}" target="_blank" class="underline font-mono">${data.contractAddress.substring(0, 10)}...</a>`;
           statusMsg.className = 'text-sm text-green-600 font-medium mt-1';
         } else {
-          statusMsg.textContent = data.message || 'Connected, but unexpected response format.';
-          statusMsg.className = 'text-sm text-amber-600 font-medium mt-1';
+          statusMsg.textContent = data.message || 'Deployment error.';
+          statusMsg.className = 'text-sm text-red-600 font-medium mt-1';
         }
       } catch (err) {
         statusMsg.textContent = 'Connection failed: ' + err.message;
