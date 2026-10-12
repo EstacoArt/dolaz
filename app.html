@@ -190,7 +190,7 @@
     // ========== WORKER CONNECTION TEST ==========
     document.getElementById('test-worker-btn').addEventListener('click', async () => {
       const statusMsg = document.getElementById('worker-status-msg');
-      statusMsg.textContent = 'Querying master registry on Base Sepolia...';
+      statusMsg.textContent = 'Proposing mock job (Bob & Mike - $45 tree cutting) on-chain...';
       statusMsg.className = 'text-sm text-blue-600 font-medium mt-1';
     
       try {
@@ -203,11 +203,11 @@
     
         const data = await response.json();
         
-        if (response.ok && data.contractAddress) {
-          statusMsg.innerHTML = `Connected! Owner: <span class="font-mono text-xs">${data.contractOwner.substring(0, 8)}...</span> · <a href="https://sepolia.basescan.org/address/${data.contractAddress}" target="_blank" class="underline font-mono">View Master Contract</a>`;
+        if (response.ok && data.txHash) {
+          statusMsg.innerHTML = `Job Proposed On-Chain! TX: <a href="https://sepolia.basescan.org/tx/${data.txHash}" target="_blank" class="underline font-mono">${data.txHash.substring(0, 10)}...</a>`;
           statusMsg.className = 'text-sm text-green-600 font-medium mt-1';
         } else {
-          statusMsg.textContent = data.message || 'Connection error.';
+          statusMsg.textContent = data.message || 'Transaction error.';
           statusMsg.className = 'text-sm text-red-600 font-medium mt-1';
         }
       } catch (err) {
