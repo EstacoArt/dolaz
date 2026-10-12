@@ -70,10 +70,24 @@
     </section>
 
     <!-- Jobs List -->
-    <section>
+    <section class="mb-10">
       <h2 class="text-lg font-semibold mb-4">Your Jobs</h2>
       <div id="jobs-list" class="space-y-4">
         <p class="text-gray-500">Loading jobs...</p>
+      </div>
+    </section>
+
+    <!-- Cloudflare Worker Connection Test -->
+    <section>
+      <div class="bg-white rounded-xl shadow-sm border p-6 flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">Cloudflare Worker Link</h2>
+          <p id="worker-status-msg" class="text-sm text-gray-500 mt-1">Test connection to your deployed worker backend.</p>
+        </div>
+        <button id="test-worker-btn"
+                class="bg-gray-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition">
+          Test Worker Connection
+        </button>
       </div>
     </section>
 
@@ -171,6 +185,42 @@
       auth.signOut().then(() => {
         window.location.href = 'index.html';
       });
+    });
+
+    // ========== WORKER CONNECTION TEST ==========
+    document.getElementById('test-worker-btn').addEventListener('click', async () => {
+      const statusMsg = document.getElementById('worker-status-msg');
+      statusMsg.textContent = 'Connecting to worker...';
+      statusMsg.className = 'text-sm text-blue-600 font-medium mt-1';
+
+      try {
+        // Replace with your actual Cloudflare Worker URL (e.g. https://your-worker.your-subdomain.workers.dev)
+        const workerUrl = 'https://YOUR_WORKER_SUBDOMAIN.workers.dev';
+
+        const response = await fetch(workerUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.message === 'Worker successfully connected') {
+          statusMsg.textContent = 'Worker successfully connected';
+          statusMsg.className = 'text-sm text-green-600 font-medium mt-1';
+        } else {
+          statusMsg.textContent = data.message || 'Connected, but unexpected response format.';
+          statusMsg.className = 'text-sm text-amber-600 font-medium mt-1';
+        }
+      } catch (err) {
+        statusMsg.textContent = 'Connection failed: ' + err.message;
+        statusMsg.className = 'text-sm text-red-600 font-medium mt-1';
+      }
     });
 
     // ========== AUDIT LOGGER HELPER ==========
