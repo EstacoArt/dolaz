@@ -232,7 +232,7 @@
       }
     }
 
-    // ========== CREATE JOB WITH RECIPIENT LOOKUP ==========
+// ========== CREATE JOB WITH RECIPIENT LOOKUP & ON-CHAIN PROPOSAL ==========
     document.getElementById('create-job-form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -272,7 +272,12 @@
           contractorName = userProfile.name;
         }
 
-        const jobRef = await db.collection('jobs').add({
+        // Generate a cryptographically secure bytes32 job ID for blockchain & Firestore sync
+        const jobId = "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // 1. Save document to Firestore using the bytes32 ID
+        await db.collection('jobs').doc(jobId).set({
           clientId,
           clientName,
           contractorId,
@@ -286,11 +291,24 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        await logAuditAction(jobRef.id, 'CONTRACT_CREATED', `Contract created for ${amount} ${currency}`);
+        // 2. Trigger Cloudflare Worker to execute proposeJob on-chain
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId, amount, currency })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok) {
+          throw new Error('On-chain proposal failed: ' + (workerData.message || 'Unknown error'));
+        }
+
+        await logAuditAction(jobId, 'CONTRACT_CREATED', `Contract proposed on-chain for ${amount} ${currency}. TX: ${workerData.txHash}`);
 
         document.getElementById('create-job-form').reset();
         loadJobs();
-        alert('Contract created and sent successfully!');
+        alert('Contract created and proposed on-chain successfully!');
       } catch (err) {
         alert('Error creating job: ' + err.message);
       }
