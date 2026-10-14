@@ -291,12 +291,12 @@
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 2. Trigger Cloudflare Worker to execute proposeJob on-chain
+        // 2. Trigger Cloudflare Worker to execute proposeJob on-chain with description hash
         const workerUrl = 'https://dolaz.tdgb.workers.dev/';
         const workerRes = await fetch(workerUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobId, amount, currency })
+          body: JSON.stringify({ jobId, amount, currency, description })
         });
 
         const workerData = await workerRes.json();
