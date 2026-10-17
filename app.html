@@ -604,13 +604,37 @@
     };
 
     window.fundJob = async (jobId) => {
-      alert('In the next step we will show the bank transfer details (IBAN / ACH).\n\nFor now the status will just move to "funded".');
-      await db.collection('jobs').doc(jobId).update({
-        status: 'funded',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction(jobId, 'JOB_FUNDED', 'Escrow funded by client');
-      loadJobs();
+      if (!confirm('Proceed to fund this contract? This will record the escrow deposit on Base Sepolia.')) return;
+
+      isSubmitting = true;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      try {
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'fundJob',
+            jobId: jobId
+          })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok || !workerData.success) {
+          throw new Error(workerData.message || 'Funding transaction failed');
+        }
+
+        await logAuditAction(jobId, 'JOB_FUNDED', `Escrow funded on-chain. TX: ${workerData.txHash}`);
+        loadJobs();
+        alert('Job successfully funded and recorded on-chain!');
+
+      } catch (err) {
+        alert('Error funding job: ' + err.message);
+      } finally {
+        isSubmitting = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
     };
 
     window.requestCompletion = async (jobId) => {
