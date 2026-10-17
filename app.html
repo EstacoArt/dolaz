@@ -648,22 +648,71 @@
     };
 
     window.approveComplete = async (jobId) => {
-      await db.collection('jobs').doc(jobId).update({
-        status: 'released',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction(jobId, 'FUNDS_RELEASED', 'Completion approved and funds released');
-      loadJobs();
+      if (!confirm('Approve completion and release funds? This will execute the final settlement on Base Sepolia.')) return;
+
+      isSubmitting = true;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      try {
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'completeJob',
+            jobId: jobId
+          })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok || !workerData.success) {
+          throw new Error(workerData.message || 'Completion transaction failed');
+        }
+
+        await logAuditAction(jobId, 'FUNDS_RELEASED', `Completion approved and funds released on-chain. TX: ${workerData.txHash}`);
+        loadJobs();
+        alert('Funds released successfully on-chain!');
+
+      } catch (err) {
+        alert('Error releasing funds: ' + err.message);
+      } finally {
+        isSubmitting = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
     };
 
     window.voidJob = async (jobId) => {
       if (!confirm('Are you sure you want to void this proposed contract?')) return;
-      await db.collection('jobs').doc(jobId).update({
-        status: 'voided',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction(jobId, 'CONTRACT_VOIDED', 'Contract voided unilaterally by creator');
-      loadJobs();
+
+      isSubmitting = true;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      try {
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'voidJob',
+            jobId: jobId
+          })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok || !workerData.success) {
+          throw new Error(workerData.message || 'Void transaction failed');
+        }
+
+        await logAuditAction(jobId, 'CONTRACT_VOIDED', `Contract voided on-chain. TX: ${workerData.txHash}`);
+        loadJobs();
+        alert('Contract voided on-chain successfully!');
+
+      } catch (err) {
+        alert('Error voiding contract: ' + err.message);
+      } finally {
+        isSubmitting = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
     };
 
     window.requestVoid = async (jobId) => {
@@ -697,12 +746,36 @@
 
     window.approveVoid = async (jobId) => {
       if (!confirm('Are you sure you want to approve voiding this contract?')) return;
-      await db.collection('jobs').doc(jobId).update({
-        status: 'voided',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction(jobId, 'VOID_APPROVED', 'Void approved and contract terminated');
-      loadJobs();
+
+      isSubmitting = true;
+      document.getElementById('loading-overlay').classList.remove('hidden');
+
+      try {
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'voidJob',
+            jobId: jobId
+          })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok || !workerData.success) {
+          throw new Error(workerData.message || 'Void approval transaction failed');
+        }
+
+        await logAuditAction(jobId, 'VOID_APPROVED', `Void approved and contract terminated on-chain. TX: ${workerData.txHash}`);
+        loadJobs();
+        alert('Void approved and contract terminated on-chain!');
+
+      } catch (err) {
+        alert('Error approving void: ' + err.message);
+      } finally {
+        isSubmitting = false;
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
     };
 
     window.raiseDispute = (jobId) => {
@@ -739,6 +812,7 @@
       const attachmentUrls = [];
 
       try {
+        // 1. Upload files to Storage first
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
           const storageRef = storage.ref(`disputes/${jobId}/${Date.now()}_${file.name}`);
@@ -752,11 +826,30 @@
           });
         }
 
+        // 2. Trigger Cloudflare Worker to execute raiseDispute on-chain
+        const workerUrl = 'https://dolaz.tdgb.workers.dev/';
+        const workerRes = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'raiseDispute',
+            jobId: jobId,
+            reason: reason
+          })
+        });
+
+        const workerData = await workerRes.json();
+        if (!workerRes.ok || !workerData.success) {
+          throw new Error(workerData.message || 'On-chain dispute failed');
+        }
+
+        // 3. Update Firestore with dispute details and attachments
         await db.collection('jobs').doc(jobId).update({
           status: 'disputed',
           disputeReason: reason,
           disputedBy: currentUser.uid,
           disputeAttachments: attachmentUrls,
+          txHashDispute: workerData.txHash,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -764,11 +857,10 @@
           ? `Dispute reason: ${reason} (${attachmentUrls.length} file(s) attached)`
           : `Dispute reason: ${reason}`;
 
-        await logAuditAction(jobId, 'DISPUTE_RAISED', detailMsg);
+        await logAuditAction(jobId, 'DISPUTE_RAISED', `${detailMsg}. TX: ${workerData.txHash}`);
         loadJobs();
-        alert('Dispute raised with attachments. Our specialists will review it within a few days.');
+        alert('Dispute raised and recorded on-chain successfully!');
       } catch (err) {
-        // Rollback: delete any uploaded files from storage if transaction fails or is interrupted
         console.error('Error raising dispute, rolling back uploaded files...', err);
         for (const ref of uploadedRefs) {
           try {
