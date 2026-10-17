@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hudson Oakbridge – Institutional Milestone Accounts</title>
+  <title>Hudson Oakbridge – Safe Construction Payments</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
@@ -128,74 +128,107 @@
 
   </main>
 
-  <!-- Detailed Scroll-Down Section: Chronological Project Lifecycle Pipeline -->
+  <!-- Interactive Project Lifecycle Flowchart Section -->
   <section class="w-full max-w-7xl mx-auto px-6 py-16 border-t border-slate-800">
-    <div class="text-center max-w-3xl mx-auto mb-16 space-y-3">
-      <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Project Lifecycle & Flow</h2>
-      <p class="text-sm text-slate-400">A clear, chronological financial sequence designed to protect capital and guarantee fast settlement.</p>
+    <div class="text-center max-w-3xl mx-auto mb-12 space-y-3">
+      <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Interactive Project Lifecycle & Flow</h2>
+      <p class="text-sm text-slate-400">Click any state node below to inspect the underlying automated financial sequence and safeguards.</p>
     </div>
 
-    <!-- Timeline Grid with Connecting Line Styling -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+    <!-- Flowchart Grid Container -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       
-      <!-- Step 1 -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 relative flex flex-col justify-between hover:border-blue-500/50 transition group">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-sm border border-blue-500/30">01</span>
-            <span class="text-xs text-slate-500 font-mono">Phase I</span>
+      <!-- Left: Interactive Flowchart States -->
+      <div class="lg:col-span-5 flex flex-col space-y-3">
+        
+        <!-- State 1 Button -->
+        <button onclick="showLifecycleStep(1)" id="step-btn-1" class="flow-step-btn text-left p-4 rounded-xl border border-blue-500 bg-blue-500/10 transition flex items-center justify-between group">
+          <div class="flex items-center space-x-3">
+            <span class="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">01</span>
+            <div>
+              <span class="block text-sm font-semibold text-white">Setup & Funding</span>
+              <span class="block text-[11px] text-slate-400">Initial capital deposit & account lock</span>
+            </div>
           </div>
-          <h3 class="font-semibold text-white text-base mb-2 group-hover:text-blue-400 transition">Setup & Funding</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">Buyer deposits project capital into a dedicated virtual account. Funds are securely locked out of reach of both parties.</p>
+          <svg class="w-5 h-5 text-blue-400 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <!-- Connecting Arrow Indicator -->
+        <div class="flex justify-center my-[-4px] text-slate-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
         </div>
-        <div class="mt-6 pt-3 border-t border-slate-700/40 text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> Guaranteed security
+
+        <!-- State 2 Button -->
+        <button onclick="showLifecycleStep(2)" id="step-btn-2" class="flow-step-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 hover:border-slate-500 transition flex items-center justify-between group">
+          <div class="flex items-center space-x-3">
+            <span class="w-7 h-7 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">02</span>
+            <div>
+              <span class="block text-sm font-semibold text-white">Milestone Execution</span>
+              <span class="block text-[11px] text-slate-400">Progressive completion & reviews</span>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-slate-500 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <!-- Connecting Arrow Indicator -->
+        <div class="flex justify-center my-[-4px] text-slate-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
         </div>
+
+        <!-- State 3 Button -->
+        <button onclick="showLifecycleStep(3)" id="step-btn-3" class="flow-step-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 hover:border-slate-500 transition flex items-center justify-between group">
+          <div class="flex items-center space-x-3">
+            <span class="w-7 h-7 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">03</span>
+            <div>
+              <span class="block text-sm font-semibold text-white">Automated Payouts</span>
+              <span class="block text-[11px] text-slate-400">Instant zero-fee banking release</span>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-slate-500 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <!-- Connecting Arrow Indicator -->
+        <div class="flex justify-center my-[-4px] text-slate-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+        </div>
+
+        <!-- State 4 Button -->
+        <button onclick="showLifecycleStep(4)" id="step-btn-4" class="flow-step-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 hover:border-slate-500 transition flex items-center justify-between group">
+          <div class="flex items-center space-x-3">
+            <span class="w-7 h-7 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs">04</span>
+            <div>
+              <span class="block text-sm font-semibold text-white">Expert Arbitration</span>
+              <span class="block text-[11px] text-slate-400">Rapid conflict resolution</span>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-slate-500 transform group-hover:translate-x-1 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
       </div>
 
-      <!-- Step 2 -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 relative flex flex-col justify-between hover:border-blue-500/50 transition group">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-sm border border-blue-500/30">02</span>
-            <span class="text-xs text-slate-500 font-mono">Phase II</span>
+      <!-- Right: Detailed Explanation Inspector Panel -->
+      <div class="lg:col-span-7 bg-slate-800/50 border border-slate-700/80 rounded-2xl p-8 flex flex-col justify-between min-h-[320px]">
+        
+        <!-- Content Container -->
+        <div id="inspector-content" class="space-y-4">
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <span>Phase I State Overview</span>
           </div>
-          <h3 class="font-semibold text-white text-base mb-2 group-hover:text-blue-400 transition">Milestone Execution</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">As work advances through scheduled stages (e.g. framing, rough-in), completed tasks are submitted for client inspection.</p>
+          <h3 id="inspector-title" class="text-2xl font-bold text-white tracking-tight">Setup & Funding</h3>
+          <p id="inspector-desc" class="text-sm text-slate-300 leading-relaxed">
+            The property owner (buyer) deposits project capital into a dedicated virtual account hosted via our regulated US banking partner. Funds are locked securely out of reach of both parties, eliminating the risk of contractor ghosting while guaranteeing proof of funds upfront.
+          </p>
+          <div class="pt-2 border-t border-slate-700/60 flex items-center gap-2 text-xs text-emerald-400 font-medium">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+            <span id="inspector-badge">Guaranteed capital security & zero operational custody by platform</span>
+          </div>
         </div>
-        <div class="mt-6 pt-3 border-t border-slate-700/40 text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> Zero contractor risk
-        </div>
-      </div>
 
-      <!-- Step 3 -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 relative flex flex-col justify-between hover:border-blue-500/50 transition group">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-sm border border-blue-500/30">03</span>
-            <span class="text-xs text-slate-500 font-mono">Phase III</span>
-          </div>
-          <h3 class="font-semibold text-white text-base mb-2 group-hover:text-blue-400 transition">Automated Payouts</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">Once a milestone is verified, funds disburse instantly to the contractor via automated banking rails with zero fees.</p>
+        <div class="mt-8 pt-4 border-t border-slate-700/40 flex justify-between items-center text-xs text-slate-400">
+          <span>Hudson Oakbridge Smart Financial Engine</span>
+          <span class="font-mono text-blue-400" id="inspector-status">STATUS: ACTIVE / READY</span>
         </div>
-        <div class="mt-6 pt-3 border-t border-slate-700/40 text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> Instant transfer
-        </div>
-      </div>
 
-      <!-- Step 4 -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 relative flex flex-col justify-between hover:border-blue-500/50 transition group">
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-sm border border-blue-500/30">04</span>
-            <span class="text-xs text-slate-500 font-mono">Resolution</span>
-          </div>
-          <h3 class="font-semibold text-white text-base mb-2 group-hover:text-blue-400 transition">Expert Arbitration</h3>
-          <p class="text-xs text-slate-400 leading-relaxed">In case of a dispute, our veteran construction experts review site data and resolve blocks in days, not months.</p>
-        </div>
-        <div class="mt-6 pt-3 border-t border-slate-700/40 text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> Decades of expertise
-        </div>
       </div>
 
     </div>
@@ -212,8 +245,64 @@
     </div>
   </footer>
 
-  <!-- Original Functional JavaScript Logic (Unchanged) -->
+  <!-- Interactive Flowchart Inspector Script & Original Logic -->
   <script>
+    // Lifecycle Flow State Data
+    const lifecycleData = {
+      1: {
+        phase: "Phase I State Overview",
+        title: "Setup & Funding",
+        desc: "The property owner (buyer) deposits project capital into a dedicated virtual account hosted via our regulated US banking partner. Funds are locked securely out of reach of both parties, eliminating the risk of contractor ghosting while guaranteeing proof of funds upfront.",
+        badge: "Guaranteed capital security & zero operational custody by platform",
+        status: "STATUS: ACTIVE / READY"
+      },
+      2: {
+        phase: "Phase II State Overview",
+        title: "Milestone Execution",
+        desc: "As work advances through scheduled stages (e.g. framing, rough-in, electrical), completed tasks are submitted for client inspection. Contractors maintain complete peace of mind knowing funds are already sitting safely in the dedicated account.",
+        badge: "Zero contractor risk & progressive milestone verification",
+        status: "STATUS: IN PROGRESS"
+      },
+      3: {
+        phase: "Phase III State Overview",
+        title: "Automated Payouts",
+        desc: "Once a milestone is verified and signed off, funds disburse instantly to the contractor via automated US banking rails. The platform takes zero fees from either user, providing full capital transfer efficiency.",
+        badge: "Instant zero-fee transfer via automated rails",
+        status: "STATUS: SETTLEMENT READY"
+      },
+      4: {
+        phase: "Resolution State Overview",
+        title: "Expert Arbitration",
+        desc: "In the rare event of a disagreement, our veteran construction experts review site data, photos, and project logs. They resolve blocks in days rather than months of costly legal litigation.",
+        badge: "Decades of construction expertise & rapid mediation",
+        status: "STATUS: ON STANDBY"
+      }
+    };
+
+    function showLifecycleStep(stepNum) {
+      // Update active button styling across all steps
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        const badgeSpan = btn.querySelector('span:first-child');
+        if (i === stepNum) {
+          btn.className = "flow-step-btn text-left p-4 rounded-xl border border-blue-500 bg-blue-500/10 transition flex items-center justify-between group";
+          badgeSpan.className = "w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs";
+        } else {
+          btn.className = "flow-step-btn text-left p-4 rounded-xl border border-slate-700 bg-slate-800/40 hover:border-slate-500 transition flex items-center justify-between group";
+          badgeSpan.className = "w-7 h-7 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center justify-center text-xs";
+        }
+      }
+
+      // Update inspector panel content
+      const data = lifecycleData[stepNum];
+      document.getElementById('inspector-content').querySelector('span').textContent = data.phase;
+      document.getElementById('inspector-title').textContent = data.title;
+      document.getElementById('inspector-desc').textContent = data.desc;
+      document.getElementById('inspector-badge').textContent = data.badge;
+      document.getElementById('inspector-status').textContent = data.status;
+    }
+
+    // Original Firebase Configuration & Authentication Logic
     const firebaseConfig = {
       apiKey: "AIzaSyChaJ8V0RulhBVu7EYZq9Kh6mswAIADADw",
       authDomain: "dolaz-9e25e.firebaseapp.com",
